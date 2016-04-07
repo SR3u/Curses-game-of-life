@@ -27,8 +27,15 @@ THE SOFTWARE.
 #include <curses.h>
 #include <locale.h>
 #include <time.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+
 #include "macros.h"
 
+#define ALIVE_CELL_CHAR ACS_CKBOARD
+#define DEAD_CELL_CHAR ' '
 
 /* Array to hold the cells */
 static int *cells = NULL;
@@ -71,34 +78,99 @@ void finish();
 void tick();
 
 /* Activate a cell and the visual representation of it */
-void activate(int y, int x);
+void activateCell(int y, int x);
+/* Deactivate a cell and the visual representation of it */
+void deactivateCell(int y, int x);
 
 /* A helper function for creating new windows */
 WINDOW *createwin(int height, int width, int begy, int begx);
 
 /* Keyboard utilities */
-bool kbd(int ch);
+bool kbd(int ch,int *reset);
 
 /* Calculate the live neighbours for a cell */
 int neighbours(int y, int x);
-
-int main()
+int kbhit(void)
 {
-    int ch; /* Holds the keyboard char */
+    struct timeval        timeout;
+    fd_set                readfds;
+    int                how;
+    /* look only at stdin (fd = 0) */
+    FD_ZERO(&readfds);
+    FD_SET(0, &readfds);
+    
+    /* poll: return immediately */
+    timeout.tv_sec = 0L;
+    timeout.tv_usec = 0L;
+    
+    how = select(1, &readfds, (fd_set *)NULL, (fd_set *)NULL, &timeout);
+    /* Change "&timeout" above to "(struct timeval *)0"       ^^^^^^^^
+     * if you want to wait until a key is hit
+     */
+    
+    if ((how > 0) && FD_ISSET(0, &readfds))
+        return 1;
+    else
+        return 0;
+}
+int gol_main()
+{
+    int ch=0; /* Holds the keyboard char */
     init();
-
+    int reset=0;
     do
     { /* Keyboard loop */
-        ch = getch();
+        ch=0;
+        while(kbhit()){
+            ch = getch();
+        }
+        if(ch==0&&reset==2){tick();}
     }
-    while(kbd(ch)); /* When the kbd returns false, we stop */
-
+    while(kbd(ch,&reset)); /* When the kbd returns false, we stop */
+    
     finish();
-
+    return reset;
+}
+int main()
+{
+    int res=0;
+    do
+    { /* Keyboard loop */
+        res=gol_main();
+    }
+    while(res==1);
     return 0;
 }
-
-bool kbd(int ch)
+void randomize()
+{
+    int x,y;
+    for(x = 0; x < lifecols; x++)
+    {
+        for(y = 0; y < lifelines; y++)
+        {
+            if(rand()%2==0)
+            {
+                deactivateCell(y,x);
+            }
+            else
+            {
+                activateCell(y,x);
+            }
+        }
+    }
+}
+void clearCells()
+{
+    int x,y;
+    for(x = 0; x < lifecols; x++)
+    {
+        for(y = 0; y < lifelines; y++)
+        {
+            deactivateCell(y,x);
+        }
+    }
+}
+bool kbd(int ch,int *reset)
 {
     int x,y; /* Holds the coordinates */
     getyx(life, y, x); /* Get the coordinates from curses life window */
@@ -107,31 +179,58 @@ bool kbd(int ch)
         case 'q':
             return false;
             break;
-        case 'l': /* Go right */
+        case 'r':
+            randomize();
+            break;
+        case 'c':
+            clearCells();
+            break;
+        case KEY_RIGHT: /* Go right */
             x=(x+1)%CMAX;
             break;
-        case 'h': /* Go left */
+        case KEY_LEFT: /* Go left */
             x=(x-1)%CMAX;
             break;
-        case 'j': /* Go down */
+        case KEY_DOWN: /* Go down */
             y=(y+1)%LMAX;
             break;
-        case 'k': /* Go up */
+        case KEY_UP: /* Go up */
             y=(y-1)%LMAX;
             break;
         case ' ': /* Activate a cell */
-            activate(y, x);
+        case 'a':
+            activateCell(y, x);
             break;
-        case 10: /* Enter. Start the tick */
+        case KEY_BACKSPACE:
+        case 'd': /* Deactivate a cell */
+            deactivateCell(y, x);
+            break;
+        case 10: /* Enter.
+                  Start the tick */
             tick();
             break;
-        case KEY_UP: /* Increase tick size */
+        case '+': /* Increase tick size */
+        case '=': /* Increase tick size */
             ticksize++;
             status();
             break;
-        case KEY_DOWN: /* Reduce tick size */
+        case '-': /* Reduce tick size */
+        case '_': /* Reduce tick size */
             ticksize--;
             status();
+            break;
+        case '0':
+        case ')':
+            (*reset)=1;
+            return false;
+            break;
+        case '9':
+        case '(':
+            (*reset)=2;
+            break;
+        case '8':
+        case '*':
+            (*reset)=0;
             break;
     }
     wmove(life, y, x); /* Move the coordinates to the new location and refresh
@@ -174,13 +273,13 @@ void tick()
                 if(n < 2 || n > 3)
                 {
                     ABCPR(y,x);
-                    mvwaddch(life, y, x, ' ');
+                    mvwaddch(life, y, x, DEAD_CELL_CHAR);
                 }
                 /* If a cell has 3 neighbours it revives */
                 if(n == 3)
                 {
                     BCPR(y, x);
-                    mvwaddch(life, y, x, 'X');
+                    mvwaddch(life, y, x, ALIVE_CELL_CHAR);
                 }
                 /* The only possibility left is that the cell has two
                  * neighbours, which means that the cell stays alive if it's
@@ -365,10 +464,17 @@ void status()
     wrefresh(life);
 }
 
-void activate(int y, int x)
+void activateCell(int y, int x)
 {
     /* Set the cell alive in the array */
     CPR(y,x);
     /* And show it visually too */
-    mvwaddch(life, y, x, 'X');
+    mvwaddch(life, y, x, ALIVE_CELL_CHAR);
+}
+void deactivateCell(int y, int x)
+{
+    /* Set the cell alive in the array */
+    ACPR(y,x);
+    /* And show it visually too */
+    mvwaddch(life, y, x, DEAD_CELL_CHAR);
 }

@@ -2,3 +2,5 @@
 *.swp
 life
 *.o
+life.xcodeproj/project.xcworkspace/xcuserdata
+life.xcodeproj/xcuserdata

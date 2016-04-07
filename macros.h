@@ -40,10 +40,10 @@ THE SOFTWARE.
 # define SIZE (ASIZE*sizeof(int)) /* And the real size of it */
 
 # define CPR(y, x) (cells[COORD((y),(x))] = 1) /* Give CPR to the defined
-                                                  coordinate. (Make it alive)
-                                                  */
+                                                  coordinate. (Make it alive)*/
+# define ACPR(y, x) (cells[COORD((y),(x))] = 0) /* Kill the cell. Anticpr */
 # define BCPR(y, x) (buffer[COORD((y),(x))] = 1) /* The same but for buffer */
-# define ABCPR(y, x) (buffer[COORD((y),(x))] = 0) /* Kill the cell. Anticpr */
+# define ABCPR(y, x) (buffer[COORD((y),(x))] = 0) /* Kill the cell. Antibcpr*/
 
 # define COPYB memcpy(cells, buffer, SIZE) /* Sync the cells with the data from
                                               the buffer */
