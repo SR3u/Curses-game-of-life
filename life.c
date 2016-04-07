@@ -45,6 +45,7 @@ static int *buffer = NULL;
 /* Size of the 'game area' */
 static int lifecols = 0;
 static int lifelines = 0;
+static long cellsAlive = 0;
 
 /* Default tick size. How many iterations are made in a tick */
 static int ticksize = 1;
@@ -76,7 +77,7 @@ void finish();
 
 /* Go forward a tick (ticksize iterations) */
 void tick();
-
+void spawn_glider(int y,int x);
 /* Activate a cell and the visual representation of it */
 void activateCell(int y, int x);
 /* Deactivate a cell and the visual representation of it */
@@ -87,6 +88,8 @@ WINDOW *createwin(int height, int width, int begy, int begx);
 
 /* Keyboard utilities */
 bool kbd(int ch,int *reset);
+
+void randomize();
 
 /* Calculate the live neighbours for a cell */
 int neighbours(int y, int x);
@@ -117,6 +120,7 @@ int gol_main()
 {
     int ch=0; /* Holds the keyboard char */
     init();
+    randomize();
     int reset=0;
     do
     { /* Keyboard loop */
@@ -143,6 +147,7 @@ int main()
 }
 void randomize()
 {
+    cellsAlive=0;
     int x,y;
     for(x = 0; x < lifecols; x++)
     {
@@ -169,6 +174,7 @@ void clearCells()
             deactivateCell(y,x);
         }
     }
+    cellsAlive=0;
 }
 bool kbd(int ch,int *reset)
 {
@@ -209,6 +215,9 @@ bool kbd(int ch,int *reset)
                   Start the tick */
             tick();
             break;
+        case 'g':
+            spawn_glider(y, x);
+            break;
         case '+': /* Increase tick size */
         case '=': /* Increase tick size */
             ticksize++;
@@ -236,7 +245,7 @@ bool kbd(int ch,int *reset)
     wmove(life, y, x); /* Move the coordinates to the new location and refresh
                           the game area */
     wrefresh(life);
-
+    if(ch!=0){status();}
     return true;
 }
 
@@ -261,6 +270,7 @@ void tick()
     COPYC;
     for(t = 0; t < ticksize; t++)
     { /* Iterations */
+        cellsAlive=0;
         for(x = 0; x < lifecols; x++)
         {
             for(y = 0; y < lifelines; y++)
@@ -284,6 +294,7 @@ void tick()
                 /* The only possibility left is that the cell has two
                  * neighbours, which means that the cell stays alive if it's
                  * alive, if it's dead it stays dead. */
+                if(BALIVE(y, x)){cellsAlive++;}
             }
         }
         /* Sync the cells with the buffer */
@@ -458,21 +469,42 @@ void status()
     mvwprintw(info, 7, 1, " Lines: %d", lifelines);
     mvwprintw(info, 8, 1, "Array size: %d", ASIZE);
     mvwprintw(info, 9, 1, "Tick size: %d", ticksize);
+    mvwprintw(info, 9, 1, "Cells alive: %d", cellsAlive);
     getyx(life, y, x);
     wmove(life, y, x);
     wrefresh(info);
     wrefresh(life);
 }
-
+void spawn_glider(int y,int x)
+{
+    if(x==0){return;}
+    if(y==0){return;}
+    if(x+4>CMAX){return;}
+    if(y+4>LMAX){return;}
+    for(int _x=x-1;_x<x+4;_x++)
+    {
+        for(int _y=y-1;_y<y+4;_y++)
+        {
+            deactivateCell(_y, _x);
+        }
+    }
+    activateCell(y, x+1);
+    activateCell(y+1, x+2);
+    activateCell(y+2, x);
+    activateCell(y+2, x+1);
+    activateCell(y+2, x+2);
+}
 void activateCell(int y, int x)
 {
     /* Set the cell alive in the array */
+    if(! ALIVE(y, x)){cellsAlive++;}
     CPR(y,x);
     /* And show it visually too */
     mvwaddch(life, y, x, ALIVE_CELL_CHAR);
 }
 void deactivateCell(int y, int x)
 {
+    if(ALIVE(y, x)){cellsAlive--;}
     /* Set the cell alive in the array */
     ACPR(y,x);
     /* And show it visually too */

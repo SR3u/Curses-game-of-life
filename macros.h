@@ -29,6 +29,9 @@ THE SOFTWARE.
 
 # define ALIVE(y, x) (CELL((y), (x))==1)?1:0 /* Check for whether a cell is
                                                 alive */
+# define BALIVE(y, x) (BCELL((y), (x))==1)?1:0/* Check for whether a buffer
+                                                 cell is alive */
+
 
 # define COORD(y, x) ((y)*lifecols+(x)) /* Convert two-dimensional data to
                                            one-dimensional data. y*xmax+x */
@@ -51,6 +54,7 @@ THE SOFTWARE.
                                               from the cells */
 
 # define CELL(y, x) (cells[ COORD( (y), (x) ) ] ) /* Data from the cell. */
+# define BCELL(y, x) (buffer[ COORD( (y), (x) ) ] ) /* Data from the cell in the buffer. */
 /* Debug macro */
 # define debugc(fmt, x, s) fprintf(stdout, "%s:%d %s=" fmt ": %s\n", __FILE__, __LINE__, #x, (x), (s))
 /* Helper macro for debugging */
