@@ -33,8 +33,9 @@ THE SOFTWARE.
                                                  cell is alive */
 
 
-# define COORD(y, x) ((y)*lifecols+(x)) /* Convert two-dimensional data to
-                                           one-dimensional data. y*xmax+x */
+# define COORD(y, x) (cellIdx(y,x))
+//# define COORD(y, x) ((y)*lifecols+(x)) // Convert two-dimensional data to
+                                        // one-dimensional data. y*xmax+x */
 
 # define ICOLS 30 /* Info-window width */
 # define ILINES LINES /* Info-window height */

@@ -93,6 +93,7 @@ void randomize();
 
 /* Calculate the live neighbours for a cell */
 int neighbours(int y, int x);
+int cellIdx(int y, int x);
 int kbhit(void)
 {
     struct timeval        timeout;
@@ -137,6 +138,15 @@ int gol_main()
 }
 int main()
 {
+    lifelines = 4;
+    lifecols = 3;
+    for(int x=-2;x<lifecols+2;x++)
+    {
+        for(int y=-2;y<lifelines+2;y++)
+        {
+            CELL(y, x);
+        }
+    }
     int res=0;
     do
     { /* Keyboard loop */
@@ -192,16 +202,20 @@ bool kbd(int ch,int *reset)
             clearCells();
             break;
         case KEY_RIGHT: /* Go right */
-            x=(x+1)%CMAX;
+            if(x==CMAX){x==0;}
+            else{x=(x+1)%CMAX;}
             break;
         case KEY_LEFT: /* Go left */
-            x=(x-1)%CMAX;
+            if(x==0){x=CMAX;}
+            else{x=(x-1)%CMAX;}
             break;
         case KEY_DOWN: /* Go down */
-            y=(y+1)%LMAX;
+            if(y==LMAX){y=0;}
+            else{y=(y+1)%LMAX;}
             break;
         case KEY_UP: /* Go up */
-            y=(y-1)%LMAX;
+            if(y==0){y=LMAX;}
+            else{y=(y-1)%LMAX;}
             break;
         case ' ': /* Activate a cell */
         case 'a':
@@ -314,38 +328,14 @@ int neighbours(int y, int x)
      * for above and y+1 means the bottom */
 
     /* Check for boundaries and then sum up the alive cells */
-    if(y < LMAX)
-    {
-        n += ALIVE(y+1,x); /* Bottom */
-    }
-    if(y > 0)
-    {
-        n += ALIVE(y-1,x); /* Top */
-    }
-    if(x < CMAX)
-    {
-        n += ALIVE(y, x+1); /* Right */
-        if(y > 0)
-        {
-            n += ALIVE(y-1, x+1); /* Top right */
-        }
-        if(y < LMAX)
-        {
-            n += ALIVE(y+1, x+1); /* Bottom right */
-        }
-    }
-    if(x > 0)
-    {
-        n += ALIVE(y, x-1); /* Left */
-        if(y > 0)
-        {
-            n += ALIVE(y-1, x-1); /* Top left */
-        }
-        if(y < LMAX)
-        {
-            n += ALIVE(y+1, x-1); /* Bottom left */
-        }
-    }
+    n += ALIVE(y+1,x); /* Bottom */
+    n += ALIVE(y-1,x); /* Top */
+    n += ALIVE(y, x+1); /* Right */
+    n += ALIVE(y-1, x+1); /* Top right */
+    n += ALIVE(y+1, x+1); /* Bottom right */
+    n += ALIVE(y, x-1); /* Left */
+    n += ALIVE(y-1, x-1); /* Top left */
+    n += ALIVE(y+1, x-1); /* Bottom left */
 
     return n;
 }
@@ -477,10 +467,6 @@ void status()
 }
 void spawn_glider(int y,int x)
 {
-    if(x==0){return;}
-    if(y==0){return;}
-    if(x+4>CMAX){return;}
-    if(y+4>LMAX){return;}
     for(int _x=x-1;_x<x+4;_x++)
     {
         for(int _y=y-1;_y<y+4;_y++)
@@ -509,4 +495,12 @@ void deactivateCell(int y, int x)
     ACPR(y,x);
     /* And show it visually too */
     mvwaddch(life, y, x, DEAD_CELL_CHAR);
+}
+int cellIdx(int y, int x)
+{
+    while(y<0){y+=lifelines;}
+    while(x<0){x+=lifecols;}
+    if(y>LMAX){y=y%lifelines;}
+    if(x>CMAX){x=x%lifecols;}    
+    return ((y)*lifecols+(x));
 }
